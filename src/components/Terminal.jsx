@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { PhoneOutgoing, Delete, Shield, Key } from 'lucide-react';
 
+
 export default function Terminal({ userKey, onCall }) {
   const [targetKey, setTargetKey] = useState('');
+  const [copiado, setCopiado] = useState(false);
 
   // Sintetizador de áudio simples (Web Audio API) para dar o som de bip retrô nos botões
   const playBeep = (freq, duration) => {
@@ -47,6 +49,12 @@ export default function Terminal({ userKey, onCall }) {
     }
   };
 
+  const copiarChaveParaClipboard = () => {
+  navigator.clipboard.writeText(userKey); // userDeviceKey é a variável com a sua chave
+  setCopiado(true);
+  setTimeout(() => setCopiado(false), 2000); // Reseta o texto do botão após 2 segundos
+};
+
   return (
     <div className="flex flex-col justify-between h-full space-y-6">
       {/* Visor de Status do Terminal */}
@@ -58,6 +66,26 @@ export default function Terminal({ userKey, onCall }) {
           <span className="text-[10px] text-acidGreenDim">P2P_MODE_SECURE</span>
         </div>
         <div className="space-y-1">
+
+  <div className="terminal-my-key-container border border-green-500/30 p-3 bg-black/80 rounded mb-4">
+    <div className="text-xs text-green-500/60 font-mono uppercase">Seu Identificador (userKey):</div>
+    <div className="flex items-center justify-between gap-2 mt-1">
+      <span className="font-mono text-sm text-green-400 select-all truncate">
+        {userKey}
+      </span>
+      <button
+        onClick={copiarChaveParaClipboard}
+        className={`px-3 py-1 font-mono text-xs border rounded transition-all duration-300 ${
+          copiado 
+            ? 'bg-green-500/20 text-green-300 border-green-400' 
+            : 'bg-black text-green-500 border-green-500/50 hover:bg-green-500/10'
+        }`}
+      >
+        {copiado ? 'COPIADO!' : 'COPIAR'}
+      </button>
+    </div>
+  </div>
+
           <div className="flex justify-between text-xs">
             <span className="text-acidGreenDim">ENDEREÇO DE HARDWARE:</span>
             <span className="font-bold">{userKey}</span>
@@ -88,7 +116,7 @@ export default function Terminal({ userKey, onCall }) {
       {/* Teclado Hexadecimal Retrô */}
       <div className="grid grid-cols-4 gap-2">
         {/* Números e letras hexadecimais para bater com o SHA-256 parcial */}
-        {['1', '2', '3', 'A', '4', '5', '6', 'B', '7', '8', '9', 'C', '-', '0', 'E', 'F'].map((char) => (
+        {['1', '2', '3', 'A', '4', '5', '6', 'B', '7', '8', '9', '-', '0', 'A', 'B', 'C', 'D', 'E', 'F', 'K'].map((char) => (
           <button
             key={char}
             onClick={() => handleKeyPress(char)}

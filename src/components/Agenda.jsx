@@ -49,6 +49,15 @@ export default function Agenda() {
     saveContacts(updated);
   };
 
+  const handleSelectContact = (contato) => {
+  // 1. Define a chave do destinatário ativa no estado global ou hook
+  setDestinationKey(contato.chave); 
+  
+  // 2. Muda a tela ativa do App para o Rádio
+  setScreen('radio'); // ou a variável que você usa para controlar as telas no App.jsx
+};
+
+
   const handleGoogleSyncToggle = () => {
     // Simula o login do Google e vinculação da agenda
     setIsGoogleSynced(!isGoogleSynced);
@@ -163,6 +172,18 @@ export default function Agenda() {
                 <span className="text-xs font-bold tracking-wider text-acidGreen">{contact.name}</span>
                 <span className="text-[10px] text-acidGreenDim font-mono tracking-widest mt-0.5">{contact.key}</span>
               </div>
+                <div className="space-y-2">
+                    {contatos.map((contato) => (
+                      <div
+                        key={contato.chave}
+                        onClick={() => handleSelectContact(contato)}
+                        className="flex justify-between items-center p-3 border border-green-500/30 bg-black hover:bg-green-500/10 cursor-pointer active:scale-95 transition-all"
+                      >
+                        <span className="font-mono text-green-400 font-bold">{contato.nome}</span>
+                        <span className="font-mono text-xs text-green-500/60">{contato.chave}</span>
+                      </div>
+                    ))}
+                  </div>
               <button
                 onClick={() => handleDeleteContact(contact.id)}
                 className="p-2 text-acidGreenDim hover:text-radioactiveOrange rounded transition-colors"
