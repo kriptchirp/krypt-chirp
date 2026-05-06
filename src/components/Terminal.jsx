@@ -22,9 +22,7 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
     setTargetKey(userKey); // Preenche o input do endereço de destino com a chave do contato clicado
   };
 
-  const handleDelete = () => {
-    setTargetKey('');
-  };
+  
 
   // Sintetizador de áudio simples (Web Audio API) para dar o som de bip retrô nos botões
   const playBeep = (freq, duration) => {
