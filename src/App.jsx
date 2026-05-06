@@ -5,139 +5,142 @@ import Radio from './components/Radio';
 import useKChirp from './hooks/useKChirp';
 
 export default function App() {
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [currentTab, setCurrentTab] = useState('terminal'); // 'terminal', 'agenda', 'radio'
-  const [activeCall, setActiveCall] = useState(null); // Armazena dados se houver chamada ativa
-  const [userKey, setUserKey] = useState('');
+const [acceptedTerms, setAcceptedTerms] = useState(false);
+const [currentTab, setCurrentTab] = useState('terminal'); // 'terminal', 'agenda', 'radio'
+const [activeCall, setActiveCall] = useState(null); // Armazena dados se houver chamada ativa
+const [userKey, setUserKey] = useState('');
 
-  // Simula a geração do SHA-256 do hardware no primeiro acesso
-  useEffect(() => {
-    const terms = localStorage.getItem('kchirp_terms_accepted');
-    if (terms === 'true') {
-      setAcceptedTerms(true);
-    }
+// Simula a geração do SHA-256 do hardware no primeiro acesso
+useEffect(() => {
+const terms = localStorage.getItem('kchirp_terms_accepted');
+if (terms === 'true') {
+setAcceptedTerms(true);
+}
 
-    let savedKey = localStorage.getItem('kchirp_device_key');
-    if (!savedKey) {
-      const array = new Uint8Array(16);
-      window.crypto.getRandomValues(array);
-      savedKey = "K-" + Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, 12).toUpperCase();
-      localStorage.setItem('kchirp_device_key', savedKey);
-    }
-    setUserKey(savedKey);
-  }, []);
+let savedKey = localStorage.getItem('kchirp_device_key');
+if (!savedKey) {
+const array = new Uint8Array(16);
+window.crypto.getRandomValues(array);
+savedKey = "K-" + Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, 12).toUpperCase();
+localStorage.setItem('kchirp_device_key', savedKey);
+}
+setUserKey(savedKey);
+}, []);
 
-  // Inicializa o nosso hook de P2P WebRTC conectando ao endereço local
-  const { connectionState, makeCall, answerCall, disconnect } = useKChirp(userKey);
+// Inicializa o nosso hook de P2P WebRTC conectando ao endereço local
+const { connectionState, makeCall, answerCall, disconnect } = useKChirp(userKey);
 
-  // Monitora o estado da conexão para ajustar a navegação de forma reativa
-  useEffect(() => {
-    if (connectionState === 'CONNECTED' && currentTab !== 'radio') {
-      setCurrentTab('radio');
-    } else if (connectionState === 'DISCONNECTED' && currentTab === 'radio') {
-      setActiveCall(null);
-      setCurrentTab('terminal');
-    }
-  }, [connectionState, currentTab]);
+// Monitora o estado da conexão para ajustar a navegação de forma reativa
+useEffect(() => {
+if (connectionState === 'CONNECTED' && currentTab !== 'radio') {
+setCurrentTab('radio');
+} else if (connectionState === 'DISCONNECTED' && currentTab === 'radio') {
+setActiveCall(null);
+setCurrentTab('terminal');
+}
+}, [connectionState, currentTab]);
 
-  const handleAcceptTerms = () => {
-    localStorage.setItem('kchirp_terms_accepted', 'true');
-    setAcceptedTerms(true);
-  };
+const handleAcceptTerms = () => {
+localStorage.setItem('kchirp_terms_accepted', 'true');
+setAcceptedTerms(true);
+};
 
-  const handleStartCall = async (targetKey) => {
-    setActiveCall({ target: targetKey, type: 'outgoing' });
-    setCurrentTab('radio');
-    try {
-      // Dispara a oferta WebRTC. Em produção, isso seria enviado via fetch para api/signal.js
-      await makeCall(targetKey, (incomingMessage) => {
-        console.log("Mensagem de texto P2P recebida no canal de dados:", incomingMessage);
-      });
-    } catch (err) {
-      console.error("Erro ao iniciar chamada:", err);
-      handleDisconnect();
-    }
-  };
+const handleStartCall = async (targetKey) => {
+setActiveCall({ target: targetKey, type: 'outgoing' });
+setCurrentTab('radio');
+try {
+// Dispara a oferta WebRTC. Em produção, isso seria enviado via fetch para api/signal.js
+await makeCall(targetKey, (incomingMessage) => {
+console.log("Mensagem de texto P2P recebida no canal de dados:", incomingMessage);
+});
+} catch (err) {
+console.error("Erro ao iniciar chamada:", err);
+handleDisconnect();
+}
+};
 
-  const handleDisconnect = () => {
-    disconnect();
-    setActiveCall(null);
-    setCurrentTab('terminal');
-  };
+const handleDisconnect = () => {
+disconnect();
+setActiveCall(null);
+setCurrentTab('terminal');
+};
 
-  if (!acceptedTerms) {
-    return (
-      <div className="flex flex-col justify-between min-h-screen p-6 max-w-md mx-auto text-center border border-acidGreenDim my-2 rounded-lg bg-oledBlack shadow-green-glow">
-        <div className="mt-6">
-          <h1 className="text-3xl font-bold tracking-widest text-acidGreen animate-pulse">K-CHIRP</h1>
-          <p className="text-xs text-acidGreenDim mt-2">V1.0.0 // PROTOCOLO FANTASMA P2P</p>
-        </div>
+if (!acceptedTerms) {
+return (
+<div className="flex flex-col justify-between min-h-screen p-6 max-w-md mx-auto text-center border border-acidGreenDim my-2 rounded-lg bg-oledBlack shadow-green-glow">
+<div className="mt-6">
+<h1 className="text-3xl font-bold tracking-widest text-acidGreen animate-pulse">K-CHIRP</h1>
+<p className="text-xs text-acidGreenDim mt-2">V1.0.0 // PROTOCOLO FANTASMA P2P</p>
+</div>
 
-        <div className="my-auto space-y-6 text-left text-sm max-h-[60vh] overflow-y-auto pr-2">
-          <div className="border-l-2 border-radioactiveOrange pl-3 py-1 bg-radioactiveOrangeDim text-radioactiveOrange">
-            <span className="font-bold">[!] REQUISITO ETÁRIO</span>
-            <p className="text-xs mt-1">Este utilitário exige idade superior a 18 anos. Caso seja menor, o proprietário legal do dispositivo assume total responsabilidade civil por suas transmissões.</p>
-          </div>
+<div className="my-auto space-y-6 text-left text-sm max-h-[60vh] overflow-y-auto pr-2">
+<div className="border-l-2 border-radioactiveOrange pl-3 py-1 bg-radioactiveOrangeDim text-radioactiveOrange">
+<span className="font-bold">[!] REQUISITO ETÁRIO</span>
+<p className="text-xs mt-1">Este utilitário exige idade superior a 18 anos. Caso seja menor, o proprietário legal do dispositivo assume total responsabilidade civil por suas transmissões.</p>
+</div>
 
-          <div className="border-l-2 border-acidGreen pl-3 py-1 bg-acidGreenDim text-acidGreen">
-            <span className="font-bold">[i] POLÍTICA DE RASTRO ZERO</span>
-            <p className="text-xs mt-1">Nenhum dado é coletado, monitorado ou armazenado de forma centralizada. A comunicação de áudio utiliza criptografia nativa WebRTC ponta-a-ponta (P2P).</p>
-          </div>
+<div className="border-l-2 border-acidGreen pl-3 py-1 bg-acidGreenDim text-acidGreen">
+<span className="font-bold">[i] POLÍTICA DE RASTRO ZERO</span>
+<p className="text-xs mt-1">Nenhum dado é coletado, monitorado ou armazenado de forma centralizada. A comunicação de áudio utiliza criptografia nativa WebRTC ponta-a-ponta (P2P).</p>
+</div>
 
-          <div className="border border-borderGray p-3 bg-terminalGray rounded text-xs text-gray-400 leading-relaxed">
-            <p className="font-bold mb-2 text-acidGreen">TERMO DE RESPONSABILIDADE:</p>
-            Ao prosseguir, você declara estar ciente de que as chaves de comunicação são temporárias e geradas localmente. O K-Chirp não armazena logs de chamadas e não possui recursos de recuperação de dados ou moderação de uso.
-          </div>
-        </div>
+<div className="border border-borderGray p-3 bg-terminalGray rounded text-xs text-gray-400 leading-relaxed">
+<p className="font-bold mb-2 text-acidGreen">TERMO DE RESPONSABILIDADE:</p>
+Ao prosseguir, você declara estar ciente de que as chaves de comunicação são temporárias e geradas localmente. O K-Chirp não armazena logs de chamadas e não possui recursos de recuperação de dados ou moderação de uso.
+</div>
+</div>
 
-        <button 
-          onClick={handleAcceptTerms}
-          className="w-full py-4 bg-acidGreen hover:bg-transparent hover:text-acidGreen text-oledBlack font-bold border border-acidGreen rounded transition-all duration-300 shadow-green-glow text-sm tracking-wider uppercase"
-        >
-          Aceitar Termos e Inicializar
-        </button>
-      </div>
-    );
-  }
+<button 
+onClick={handleAcceptTerms}
+className="w-full py-4 bg-acidGreen hover:bg-transparent hover:text-acidGreen text-oledBlack font-bold border border-acidGreen rounded transition-all duration-300 shadow-green-glow text-sm tracking-wider uppercase"
+>
+Aceitar Termos e Inicializar
+</button>
+</div>
+);
+}
 
- return (
-  <div className="flex flex-col h-screen w-full max-w-md mx-auto border-x border-borderGray bg-oledBlack text-acidGreen overflow-hidden">
-    
-    {/* Header Fixo - Sem encolher */}
-    <header className="p-4 border-b border-borderGray flex justify-between items-center bg-terminalGray shrink-0">
-      <div>
-        <span className="text-xs text-acidGreenDim">STBY // KEY:</span>
-        <p className="text-sm font-bold text-acidGreen">{userKey}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        {connectionState === 'CONNECTED' ? (
-          <span className="w-2.5 h-2.5 rounded-full bg-radioactiveOrange animate-ping shadow-orange-glow"></span>
-        ) : (
-          <span className="w-2.5 h-2.5 rounded-full bg-acidGreen animate-pulse shadow-green-glow"></span>
-        )}
-        <span className="text-xs tracking-widest text-acidGreen font-bold">
-          {connectionState === 'CONNECTED' ? 'TX_ON' : 'K-CHIRP'}
-        </span>
-      </div>
-    </header>
-{/* No seu App.jsx, dentro de <main>: */}
+return (
+<div className="flex flex-col h-screen w-full max-w-md mx-auto border-x border-borderGray bg-oledBlack text-acidGreen overflow-hidden">
+
+{/* Header Fixo - Sem encolher */}
+<header className="p-4 border-b border-borderGray flex justify-between items-center bg-terminalGray shrink-0">
+<div>
+<span className="text-xs text-acidGreenDim">STBY // KEY:</span>
+<p className="text-sm font-bold text-acidGreen">{userKey}</p>
+</div>
+<div className="flex items-center gap-2">
+{connectionState === 'CONNECTED' ? (
+<span className="w-2.5 h-2.5 rounded-full bg-radioactiveOrange animate-ping shadow-orange-glow"></span>
+) : (
+<span className="w-2.5 h-2.5 rounded-full bg-acidGreen animate-pulse shadow-green-glow"></span>
+)}
+<span className="text-xs tracking-widest text-acidGreen font-bold">
+{connectionState === 'CONNECTED' ? 'TX_ON' : 'K-CHIRP'}
+</span>
+</div>
+</header>
+
+  
+{/* Conteúdo Dinâmico */}
 <main className="flex-1 overflow-y-auto p-3 flex flex-col justify-center">
   {currentTab === 'terminal' && (
     <Terminal 
       userKey={userKey} 
       onCall={handleStartCall}
-      targetKey={targetKey}        // Passa o estado de targetKey
-      setTargetKey={setTargetKey}  // Passa a função que atualiza o targetKey
+      targetKey={targetKey}        // certifique-se de passar o estado do targetKey
+      setTargetKey={setTargetKey}  // certifique-se de passar o setTargetKey
     />
   )}
   {currentTab === 'agenda' && (
-    <Agenda 
-      onSelectContact={(key) => {
-        setTargetKey(key);          // Define o targetKey no estado do App.jsx
-        setCurrentTab('terminal');  // Redireciona de volta para a aba Terminal
-      }} 
-    />
-  )}
+  <Agenda 
+    onSelectContact={(key) => {
+      setTargetKey(key);          // 1. Grava a chave do contato selecionado no estado global
+      setCurrentTab('terminal');  // 2. Redireciona o usuário de volta para a aba Terminal
+    }} 
+  />
+)}
+
   {currentTab === 'radio' && (
     <Radio 
       activeCall={activeCall} 
@@ -145,6 +148,6 @@ export default function App() {
     />
   )}
 </main>
-  </div>
+</div>
 );
 }
