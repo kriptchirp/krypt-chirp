@@ -1,10 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PhoneOutgoing, Delete, Shield, Key } from 'lucide-react';
 
 
-export default function Terminal({ userKey, onCall }) {
+export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
+  const [contacts, setContacts] = useState([]);
   const [targetKey, setTargetKey] = useState('');
   const [copiado, setCopiado] = useState(false);
+
+  useEffect(() => {
+    const agendaSalva = localStorage.getItem('kchirp_agenda');
+    if (agendaSalva) {
+      try {
+        setContacts(JSON.parse(agendaSalva));
+      } catch (e) {
+        console.error("Erro ao carregar contatos no terminal", e);
+      }
+    }
+  }, []);
+
+  const handleSelectContact = (userKey) => {
+    setTargetKey(userKey); // Preenche o input do endereço de destino com a chave do contato clicado
+  };
+
+  const handleDelete = () => {
+    setTargetKey('');
+  };
 
   // Sintetizador de áudio simples (Web Audio API) para dar o som de bip retrô nos botões
   const playBeep = (freq, duration) => {
@@ -98,22 +118,68 @@ export default function Terminal({ userKey, onCall }) {
       </div>
 
       {/* Input de Destino */}
-      <div className="flex flex-col space-y-2">
-        <label className="text-xs text-acidGreenDim tracking-wider">[ INSIRA O ENDEREÇO DE DESTINO ]</label>
-        <div className="relative flex items-center border border-acidGreen bg-oledBlack p-3 rounded text-xl font-bold tracking-widest text-center justify-center min-h-[56px] shadow-green-glow">
-          {targetKey || <span className="text-acidGreenDim animate-pulse text-sm font-normal">DIGITE OU USE O TECLADO...</span>}
+    <div className="flex flex-col space-y-2">
+        <label className="text-xs text-acidGreenDim tracking-wider">
+          [ INSIRA O ENDEREÇO DE DESTINO ]
+        </label>
+        <div className="relative flex items-center border border-acidGreen bg-oledBlack p-3 rounded text-base font-mono font-bold tracking-widest text-center justify-center min-h-[56px] shadow-green-glow">
+          {targetKey || (
+            <span className="text-acidGreenDim animate-pulse text-xs font-normal font-mono">
+              SELECIONE UM CONTATO OU DIGITE...
+            </span>
+          )}
           {targetKey && (
             <button 
               onClick={handleDelete}
               className="absolute right-3 p-1 text-acidGreenDim hover:text-radioactiveOrange transition-colors"
             >
-              <Delete className="w-5 h-5" />
+              {/* Substitua por sua tag de ícone ou texto simples */}
+              <span className="font-mono text-xs font-bold">[X]</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Teclado Hexadecimal Retrô */}
+      {/* Agenda Rápida Integrada no Terminal */}
+      <div className="flex flex-col space-y-1">
+        <label className="text-[10px] text-acidGreenDim tracking-wider uppercase">
+          [ SELECIONAR CONTATO RAPIDO ]
+        </label>
+        
+        <div className="border border-borderGray rounded bg-black/40 max-h-[120px] overflow-y-auto divide-y divide-borderGray/30">
+          {contacts.length === 0 ? (
+            <div className="p-3 text-center text-xs text-acidGreenDim font-mono">
+              Nenhum contato na agenda. Cadastre na aba [ AGENDA ].
+            </div>
+          ) : (
+            contacts.map((contact) => (
+              <button
+                key={contact.key}
+                onClick={() => handleSelectContact(contact.key)}
+                className={`w-full flex justify-between items-center p-2.5 text-left font-mono transition-all ${
+                  targetKey === contact.key 
+                    ? 'bg-acidGreen/20 text-acidGreen font-bold' 
+                    : 'hover:bg-acidGreen/10 text-acidGreenDim hover:text-acidGreen'
+                }`}
+              >
+                <span className="text-xs truncate max-w-[120px]">{contact.name}</span>
+                <span className="text-[10px] opacity-70">{contact.key}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Botão de Disparo / Chamar */}
+      {targetKey && (
+        <button
+          onClick={() => onCall(targetKey)}
+          className="w-full py-3 bg-acidGreen text-oledBlack font-bold font-mono text-center tracking-widest hover:bg-green-400 active:scale-95 transition-all shadow-green-glow rounded"
+        >
+          [ INICIAR TRANSMISSÃO P2P ]
+        </button>
+      )}
+
       <div className="grid grid-cols-5 gap-1.5">
         {/* Números e letras hexadecimais para bater com o SHA-256 parcial */}
         {['1', '2', '3', 'A', '4', '5', '6', 'B', '7', '8', '9', '-', '0', 'A', 'B', 'C', 'D', 'E', 'F', 'K'].map((char) => (
