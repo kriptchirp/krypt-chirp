@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PhoneOutgoing, Delete, Shield, Key } from 'lucide-react';
 
 
-export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
+export default function Terminal({ userKey, onCall, targetKey, setTargetKey, contacts, contactKey }) {
   const [contacts, setContacts] = useState([]);
   const [copiado, setCopiado] = useState(false);
 
@@ -17,8 +17,8 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
     }
   }, []);
 
-  const handleSelectContact = (userKey) => {
-    setTargetKey(userKey); // Preenche o input do endereço de destino com a chave do contato clicado
+  const handleSelectContact = (contactKey) => {
+    setTargetKey(contactKey); // Preenche o input do endereço de destino com a chave do contato clicado
   };
 
   
@@ -105,7 +105,7 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
 
           <div className="flex justify-between text-xs">
             <span className="text-acidGreenDim">ENDEREÇO DE HARDWARE:</span>
-            <span className="font-bold">{userKey}</span>
+            <span className="font-bold">{contactKey}</span>
           </div>
           <div className="flex justify-between text-xs">
             <span className="text-acidGreenDim">REGRA DE RETENÇÃO:</span>
