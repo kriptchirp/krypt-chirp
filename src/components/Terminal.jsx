@@ -4,7 +4,6 @@ import { PhoneOutgoing, Delete, Shield, Key } from 'lucide-react';
 
 export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
   const [contacts, setContacts] = useState([]);
-  const [targetKey, setTargetKey] = useState('');
   const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
