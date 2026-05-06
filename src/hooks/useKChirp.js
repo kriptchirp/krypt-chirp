@@ -51,6 +51,11 @@ export default function useKChirp(userKey) {
   const initPeerConnection = async (onMessageReceived) => {
     peerConnection.current = new RTCPeerConnection(rtcConfig);
 
+    // Log de candidatos para debug (opcional)
+    peerConnection.current.onicecandidate = (event) => {
+      if (event.candidate) console.log("[K-CHIRP] Novo candidato ICE encontrado.");
+    };
+
     // Evento de monitoramento de estado da conexão física
     peerConnection.current.onconnectionstatechange = () => {
       const state = peerConnection.current.connectionState.toUpperCase();
@@ -86,6 +91,24 @@ export default function useKChirp(userKey) {
     };
   };
 
+  // Função auxiliar para aguardar a coleta de candidatos ICE
+  // Isso garante que o SDP (oferta/resposta) contenha as rotas de rede
+  const waitForIceGathering = async () => {
+    if (peerConnection.current.iceGatheringState === 'complete') return;
+
+    return new Promise((resolve) => {
+      const checkState = () => {
+        if (peerConnection.current.iceGatheringState === 'complete') {
+          peerConnection.current.removeEventListener('icegatheringstatechange', checkState);
+          resolve();
+        }
+      };
+      peerConnection.current.addEventListener('icegatheringstatechange', checkState);
+      // Timeout de segurança de 3 segundos
+      setTimeout(resolve, 3000);
+    });
+  };
+
   // Configuração do Canal de Dados
   const setupDataChannel = (channel, onMessageReceived) => {
     channel.onopen = () => setDataChannel(channel);
@@ -114,8 +137,10 @@ export default function useKChirp(userKey) {
       const offer = await peerConnection.current.createOffer();
       await peerConnection.current.setLocalDescription(offer);
 
-      // Retorna a oferta para que a nossa API (Vercel Serverless) entregue ao destino
-      return offer;
+      // Aguarda os candidatos ICE serem gerados antes de enviar para o outro par
+      await waitForIceGathering();
+
+      return peerConnection.current.localDescription;
     } catch (err) {
       cleanup();
       throw err;
@@ -140,8 +165,10 @@ export default function useKChirp(userKey) {
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
 
-      // Retorna a resposta para entregar de volta ao chamador
-      return answer;
+      // Aguarda os candidatos ICE
+      await waitForIceGathering();
+
+      return peerConnection.current.localDescription;
     } catch (err) {
       cleanup();
       throw err;
