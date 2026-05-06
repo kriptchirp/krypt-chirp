@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Trash2, Cloud, CloudOff, ShieldAlert, Check } from 'lucide-react';
+import { UserPlus, Trash2, Cloud, CloudOff, ShieldAlert } from 'lucide-react';
 
 export default function Agenda({ onSelectContact }) {
   const [contacts, setContacts] = useState([]);
@@ -21,7 +21,6 @@ export default function Agenda({ onSelectContact }) {
     localStorage.setItem('kchirp_local_contacts', JSON.stringify(updatedContacts));
     
     if (isGoogleSynced) {
-      // Aqui futuramente chamaremos a API para salvar na pasta secreta do Google Drive (appDataFolder)
       console.log("Sincronizando com appDataFolder do Google Drive...");
     }
   };
@@ -49,18 +48,14 @@ export default function Agenda({ onSelectContact }) {
     saveContacts(updated);
   };
 
- // CORREÇÃO SEGURA NO AGENDA.JSX:
   const handleSelectContact = (contact) => {
+    // Garante que a função vinda do App.jsx existe antes de chamá-la
     if (typeof onSelectContact === 'function') {
       onSelectContact(contact.key);
-    } else {
-      console.warn("A propriedade 'onSelectContact' não foi passada para o componente Agenda.");
     }
   };
 
-
   const handleGoogleSyncToggle = () => {
-    // Simula o login do Google e vinculação da agenda
     setIsGoogleSynced(!isGoogleSynced);
   };
 
@@ -74,6 +69,7 @@ export default function Agenda({ onSelectContact }) {
         </h2>
         <button
           onClick={handleGoogleSyncToggle}
+          type="button"
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold border transition-all duration-300 ${
             isGoogleSynced 
               ? 'bg-acidGreenDim border-acidGreen text-acidGreen shadow-green-glow' 
@@ -104,6 +100,7 @@ export default function Agenda({ onSelectContact }) {
       {!showAddForm && (
         <button
           onClick={() => setShowAddForm(true)}
+          type="button"
           className="w-full py-2 border border-dashed border-acidGreen hover:border-solid hover:bg-acidGreenDim text-acidGreen font-bold rounded text-xs tracking-widest uppercase transition-all duration-200 flex items-center justify-center gap-1.5"
         >
           <UserPlus className="w-4 h-4" /> Adicionar Contato Autorizado
@@ -118,7 +115,7 @@ export default function Agenda({ onSelectContact }) {
             <button 
               type="button" 
               onClick={() => setShowAddForm(false)}
-              className="text-radioactiveOrange hover:underline"
+              className="text-radioactiveOrange hover:underline text-[10px]"
             >
               [ CANCELAR ]
             </button>
@@ -157,8 +154,8 @@ export default function Agenda({ onSelectContact }) {
         </form>
       )}
 
-{/* Lista de Contatos */}
-      <div className="flex-1 overflow-y-auto max-h-[40vh] space-y-2 pr-1">
+      {/* Lista de Contatos Corrigida (Removida a listagem duplicada) */}
+      <div className="flex-1 overflow-y-auto max-h-[45vh] space-y-2 pr-1">
         {contacts.length === 0 ? (
           <div className="text-center py-8 border border-dashed border-borderGray rounded text-xs text-acidGreenDim">
             NENHUM CONTATO AUTORIZADO NA AGENDA LOCAL
@@ -169,17 +166,16 @@ export default function Agenda({ onSelectContact }) {
               key={contact.id}
               className="flex items-center justify-between border border-borderGray bg-terminalGray/30 p-3 rounded hover:border-acidGreen transition-all group"
             >
-              {/* O clique nesta área envia os dados do contato para o App.jsx e muda de tela */}
               <div 
                 onClick={() => handleSelectContact(contact)}
-                className="flex flex-col flex-1 cursor-pointer active:scale-[0.98] transition-transform"
+                className="flex flex-col flex-1 cursor-pointer active:scale-[0.99] transition-transform"
               >
                 <span className="text-xs font-bold tracking-wider text-acidGreen">{contact.name}</span>
                 <span className="text-[10px] text-acidGreenDim font-mono tracking-widest mt-0.5">{contact.key}</span>
               </div>
-              
               <button
                 onClick={() => handleDeleteContact(contact.id)}
+                type="button"
                 className="p-2 text-acidGreenDim hover:text-radioactiveOrange rounded transition-colors shrink-0"
                 title="Remover autorização"
               >

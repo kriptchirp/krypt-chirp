@@ -120,25 +120,24 @@ export default function App() {
         </span>
       </div>
     </header>
-{/* Conteúdo Dinâmico */}
+{/* No seu App.jsx, dentro de <main>: */}
 <main className="flex-1 overflow-y-auto p-3 flex flex-col justify-center">
   {currentTab === 'terminal' && (
     <Terminal 
       userKey={userKey} 
       onCall={handleStartCall}
-      targetKey={targetKey}        // certifique-se de passar o estado do targetKey
-      setTargetKey={setTargetKey}  // certifique-se de passar o setTargetKey
+      targetKey={targetKey}        // Passa o estado de targetKey
+      setTargetKey={setTargetKey}  // Passa a função que atualiza o targetKey
     />
   )}
   {currentTab === 'agenda' && (
-  <Agenda 
-    onSelectContact={(key) => {
-      setTargetKey(key);          // 1. Grava a chave do contato selecionado no estado global
-      setCurrentTab('terminal');  // 2. Redireciona o usuário de volta para a aba Terminal
-    }} 
-  />
-)}
-
+    <Agenda 
+      onSelectContact={(key) => {
+        setTargetKey(key);          // Define o targetKey no estado do App.jsx
+        setCurrentTab('terminal');  // Redireciona de volta para a aba Terminal
+      }} 
+    />
+  )}
   {currentTab === 'radio' && (
     <Radio 
       activeCall={activeCall} 

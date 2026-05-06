@@ -5,7 +5,7 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
   const [contacts, setContacts] = useState([]);
   const [copiado, setCopiado] = useState(false);
 
-  // CORREÇÃO: Lê exatamente a mesma chave usada na Agenda!
+  // Sincroniza exatamente com a chave correta de contatos locais
   useEffect(() => {
     const agendaSalva = localStorage.getItem('kchirp_local_contacts');
     if (agendaSalva) {
@@ -15,7 +15,7 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
         console.error("Erro ao carregar contatos no terminal", e);
       }
     }
-  }, [targetKey]); // Recarrega se o targetKey mudar para manter atualizado
+  }, [targetKey]); // Atualiza se a chave atual do destino mudar
 
   const handleSelectContact = (contactKey) => {
     playBeep(1000, 0.1);
@@ -72,7 +72,6 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
 
   return (
     <div className="flex flex-col justify-between h-full space-y-4">
-      
       {/* Visor de Status do Terminal */}
       <div className="border border-acidGreenDim bg-terminalGray p-3.5 rounded shadow-green-glow shrink-0">
         <div className="flex items-center justify-between border-b border-acidGreenDim pb-1.5 mb-2">
@@ -104,12 +103,11 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
 
           <div className="flex justify-between text-[11px]">
             <span className="text-acidGreenDim">DESTINO ATUAL:</span>
-            {/* CORREÇÃO: Exibe com segurança o valor de targetKey ou "NENHUM" */}
             <span className="font-bold text-acidGreen">{targetKey || "AGUARDANDO..."}</span>
           </div>
           <div className="flex justify-between text-[11px]">
-            <span className="text-acidGreenDim">RETENÇÃO DE DADOS:</span>
-            <span className="text-radioactiveOrange font-bold">ZERO LOGS / RAM-ONLY</span>
+            <span className="text-acidGreenDim">REGRA DE RETENÇÃO:</span>
+            <span className="text-radioactiveOrange font-bold">RAM-ONLY / SEM HISTÓRICO</span>
           </div>
         </div>
       </div>
@@ -122,7 +120,7 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
         <div className="relative flex items-center border border-acidGreen bg-oledBlack p-2.5 rounded text-sm font-mono font-bold tracking-widest text-center justify-center min-h-[46px] shadow-green-glow">
           {targetKey || (
             <span className="text-acidGreenDim animate-pulse text-[10px] font-normal font-mono">
-              SELECIONE ABAIXO OU DIGITE...
+              SELECIONE UM CONTATO OU DIGITE...
             </span>
           )}
           {targetKey && (
@@ -136,16 +134,16 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
         </div>
       </div>
 
-      {/* Agenda Rápida Integrada no Terminal */}
+      {/* Agenda Rápida Integrada */}
       <div className="flex flex-col space-y-1 flex-1 min-h-[80px]">
         <label className="text-[9px] text-acidGreenDim tracking-wider uppercase">
-          [ SELECIONAR DA AGENDA LOCAL ]
+          [ SELECIONAR CONTATO RAPIDO ]
         </label>
         
         <div className="border border-borderGray rounded bg-black/40 overflow-y-auto divide-y divide-borderGray/30 flex-1 max-h-[110px]">
           {contacts.length === 0 ? (
             <div className="p-3 text-center text-xs text-acidGreenDim font-mono">
-              Nenhum contato autorizado encontrado.
+              Nenhum contato na agenda. Cadastre na aba [ AGENDA ].
             </div>
           ) : (
             contacts.map((contact) => (
@@ -158,7 +156,7 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
                     : 'hover:bg-acidGreen/10 text-acidGreenDim hover:text-acidGreen'
                 }`}
               >
-                <span className="text-xs truncate max-w-[150px]">{contact.name}</span>
+                <span className="text-xs truncate max-w-[130px]">{contact.name}</span>
                 <span className="text-[10px] opacity-70 font-bold">{contact.key}</span>
               </button>
             ))
@@ -172,24 +170,24 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
           <button
             key={char}
             onClick={() => handleKeyPress(char)}
-            className="py-2 bg-terminalGray border border-borderGray rounded text-sm font-mono font-bold hover:bg-acidGreenDim hover:border-acidGreen hover:text-acidGreen hover:shadow-green-glow transition-all active:scale-95 duration-700"
+            className="py-1.5 bg-terminalGray border border-borderGray rounded text-sm font-mono font-bold hover:bg-acidGreenDim hover:border-acidGreen hover:text-acidGreen hover:shadow-green-glow transition-all active:scale-95 duration-100"
           >
             {char}
           </button>
         ))}
       </div>
 
-      {/* Botão Principal de Disparo */}
+      {/* Botão de Disparo / Chamar */}
       <button
         onClick={handleCallSubmit}
         disabled={!targetKey}
-        className={`w-full py-3.5 rounded font-bold text-xs tracking-widest uppercase border flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 shrink-0 ${
+        className={`w-full py-3 rounded font-bold text-xs tracking-widest uppercase border flex items-center justify-center gap-2 transition-all duration-300 active:scale-95 shrink-0 ${
           targetKey 
             ? 'bg-radioactiveOrange border-radioactiveOrange text-oledBlack hover:bg-transparent hover:text-radioactiveOrange hover:shadow-orange-glow' 
             : 'bg-terminalGray border-borderGray text-gray-700 cursor-not-allowed'
         }`}
       >
-        <PhoneOutgoing className="w-4 h-4" /> Iniciar Linha (Chirp)
+        <PhoneOutgoing className="w-4 h-4" /> Iniciar Chamado (K-Chirp)
       </button>
     </div>
   );
