@@ -114,7 +114,7 @@ export default function Terminal({ userKey, onCall }) {
       </div>
 
       {/* Teclado Hexadecimal Retrô */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
         {/* Números e letras hexadecimais para bater com o SHA-256 parcial */}
         {['1', '2', '3', 'A', '4', '5', '6', 'B', '7', '8', '9', '-', '0', 'A', 'B', 'C', 'D', 'E', 'F', 'K'].map((char) => (
           <button
