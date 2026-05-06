@@ -120,58 +120,32 @@ export default function App() {
         </span>
       </div>
     </header>
+{/* Conteúdo Dinâmico */}
+<main className="flex-1 overflow-y-auto p-3 flex flex-col justify-center">
+  {currentTab === 'terminal' && (
+    <Terminal 
+      userKey={userKey} 
+      onCall={handleStartCall}
+      targetKey={targetKey}        // certifique-se de passar o estado do targetKey
+      setTargetKey={setTargetKey}  // certifique-se de passar o setTargetKey
+    />
+  )}
+  {currentTab === 'agenda' && (
+  <Agenda 
+    onSelectContact={(key) => {
+      setTargetKey(key);          // 1. Grava a chave do contato selecionado no estado global
+      setCurrentTab('terminal');  // 2. Redireciona o usuário de volta para a aba Terminal
+    }} 
+  />
+)}
 
-    {/* Conteúdo Dinâmico - Flex cresce e gerencia rolagem própria se necessário */}
-    <main className="flex-1 overflow-y-auto p-3 flex flex-col justify-start">
-      {currentTab === 'terminal' && (
-        <Terminal 
-          userKey={userKey} 
-          onCall={handleStartCall} 
-        />
-      )}
-      {currentTab === 'agenda' && <Agenda />}
-      {currentTab === 'radio' && (
-        <Radio 
-          activeCall={activeCall} 
-          onDisconnect={handleDisconnect} 
-        />
-      )}
-    </main>
-
-    {/* Footer / Abas de Navegação - Sem encolher e travado na base */}
-    <nav className="border-t border-borderGray grid grid-cols-3 bg-terminalGray text-center text-xs shrink-0">
-      <button 
-        onClick={() => setCurrentTab('terminal')}
-        className={`py-4 border-r border-borderGray tracking-widest transition-all ${
-          currentTab === 'terminal' 
-            ? 'text-acidGreen bg-oledBlack border-t-2 border-t-acidGreen font-bold' 
-            : 'text-acidGreenDim hover:text-acidGreen'
-        }`}
-      >
-        [ TERMINAL ]
-      </button>
-      <button 
-        onClick={() => setCurrentTab('agenda')}
-        className={`py-4 border-r border-borderGray tracking-widest transition-all ${
-          currentTab === 'agenda' 
-            ? 'text-acidGreen bg-oledBlack border-t-2 border-t-acidGreen font-bold' 
-            : 'text-acidGreenDim hover:text-acidGreen'
-        }`}
-      >
-        [ AGENDA ]
-      </button>
-      <button 
-        onClick={() => setCurrentTab('radio')}
-        className={`py-4 tracking-widest transition-all ${
-          currentTab === 'radio' 
-            ? 'text-radioactiveOrange bg-oledBlack border-t-2 border-t-radioactiveOrange font-bold' 
-            : 'text-acidGreenDim hover:text-acidGreen'
-        }`}
-      >
-        [ RÁDIO ]
-      </button>
-    </nav>
-
+  {currentTab === 'radio' && (
+    <Radio 
+      activeCall={activeCall} 
+      onDisconnect={handleDisconnect} 
+    />
+  )}
+</main>
   </div>
 );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Trash2, Cloud, CloudOff, ShieldAlert, Check } from 'lucide-react';
 
-export default function Agenda() {
+export default function Agenda({ onSelectContact }) {
   const [contacts, setContacts] = useState([]);
   const [newName, setNewName] = useState('');
   const [newKey, setNewKey] = useState('');
@@ -49,13 +49,14 @@ export default function Agenda() {
     saveContacts(updated);
   };
 
+ // CORREÇÃO SEGURA NO AGENDA.JSX:
   const handleSelectContact = (contact) => {
-  // 1. Define a chave do destinatário ativa no estado global ou hook
-  setDestinationKey(contact.key); 
-  
-  // 2. Muda a tela ativa do App para o Rádio
-  setScreen('radio'); // ou a variável que você usa para controlar as telas no App.jsx
-};
+    if (typeof onSelectContact === 'function') {
+      onSelectContact(contact.key);
+    } else {
+      console.warn("A propriedade 'onSelectContact' não foi passada para o componente Agenda.");
+    }
+  };
 
 
   const handleGoogleSyncToggle = () => {
@@ -156,7 +157,7 @@ export default function Agenda() {
         </form>
       )}
 
-      {/* Lista de Contatos */}
+{/* Lista de Contatos */}
       <div className="flex-1 overflow-y-auto max-h-[40vh] space-y-2 pr-1">
         {contacts.length === 0 ? (
           <div className="text-center py-8 border border-dashed border-borderGray rounded text-xs text-acidGreenDim">
@@ -168,25 +169,18 @@ export default function Agenda() {
               key={contact.id}
               className="flex items-center justify-between border border-borderGray bg-terminalGray/30 p-3 rounded hover:border-acidGreen transition-all group"
             >
-              <div className="flex flex-col">
+              {/* O clique nesta área envia os dados do contato para o App.jsx e muda de tela */}
+              <div 
+                onClick={() => handleSelectContact(contact)}
+                className="flex flex-col flex-1 cursor-pointer active:scale-[0.98] transition-transform"
+              >
                 <span className="text-xs font-bold tracking-wider text-acidGreen">{contact.name}</span>
                 <span className="text-[10px] text-acidGreenDim font-mono tracking-widest mt-0.5">{contact.key}</span>
               </div>
-                <div className="space-y-2">
-                    {contacts.map((contact) => (
-                      <div
-                        key={contact.key}
-                        onClick={() => handleSelectContact(contact)}
-                        className="flex justify-between items-center p-3 border border-green-500/30 bg-black hover:bg-green-500/10 cursor-pointer active:scale-95 transition-all"
-                      >
-                        <span className="font-mono text-green-400 font-bold">{contact.name}</span>
-                        <span className="font-mono text-xs text-green-500/60">{contact.key}</span>
-                      </div>
-                    ))}
-                  </div>
+              
               <button
                 onClick={() => handleDeleteContact(contact.id)}
-                className="p-2 text-acidGreenDim hover:text-radioactiveOrange rounded transition-colors"
+                className="p-2 text-acidGreenDim hover:text-radioactiveOrange rounded transition-colors shrink-0"
                 title="Remover autorização"
               >
                 <Trash2 className="w-4 h-4" />
