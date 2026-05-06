@@ -100,64 +100,78 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="flex flex-col justify-between min-h-screen max-w-md mx-auto border-x border-borderGray bg-oledBlack text-acidGreen">
-      {/* Header Fixo */}
-      <header className="p-4 border-b border-borderGray flex justify-between items-center bg-terminalGray">
-        <div>
-          <span className="text-xs text-acidGreenDim">STBY // KEY:</span>
-          <p className="text-sm font-bold text-acidGreen">{userKey}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {connectionState === 'CONNECTED' ? (
-            <span className="w-2.5 h-2.5 rounded-full bg-radioactiveOrange animate-ping shadow-orange-glow"></span>
-          ) : (
-            <span className="w-2.5 h-2.5 rounded-full bg-acidGreen animate-pulse shadow-green-glow"></span>
-          )}
-          <span className="text-xs tracking-widest text-acidGreen font-bold">
-            {connectionState === 'CONNECTED' ? 'TX_ON' : 'K-CHIRP'}
-          </span>
-        </div>
-      </header>
-
-      {/* Conteúdo Dinâmico */}
-      <main className="flex-1 overflow-y-auto p-4 flex flex-col justify-center">
-        {currentTab === 'terminal' && (
-          <Terminal 
-            userKey={userKey} 
-            onCall={handleStartCall} 
-          />
+ return (
+  <div className="flex flex-col h-screen w-full max-w-md mx-auto border-x border-borderGray bg-oledBlack text-acidGreen overflow-hidden">
+    
+    {/* Header Fixo - Sem encolher */}
+    <header className="p-4 border-b border-borderGray flex justify-between items-center bg-terminalGray shrink-0">
+      <div>
+        <span className="text-xs text-acidGreenDim">STBY // KEY:</span>
+        <p className="text-sm font-bold text-acidGreen">{userKey}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        {connectionState === 'CONNECTED' ? (
+          <span className="w-2.5 h-2.5 rounded-full bg-radioactiveOrange animate-ping shadow-orange-glow"></span>
+        ) : (
+          <span className="w-2.5 h-2.5 rounded-full bg-acidGreen animate-pulse shadow-green-glow"></span>
         )}
-        {currentTab === 'agenda' && <Agenda />}
-        {currentTab === 'radio' && (
-          <Radio 
-            activeCall={activeCall} 
-            onDisconnect={handleDisconnect} 
-          />
-        )}
-      </main>
+        <span className="text-xs tracking-widest text-acidGreen font-bold">
+          {connectionState === 'CONNECTED' ? 'TX_ON' : 'K-CHIRP'}
+        </span>
+      </div>
+    </header>
 
-      {/* Footer / Abas de Navegação */}
-      <nav className="border-t border-borderGray grid grid-cols-3 bg-terminalGray text-center text-xs">
-        <button 
-          onClick={() => setCurrentTab('terminal')}
-          className={`py-4 border-r border-borderGray tracking-widest transition-all ${currentTab === 'terminal' ? 'text-acidGreen bg-oledBlack border-t-2 border-t-acidGreen font-bold' : 'text-acidGreenDim hover:text-acidGreen'}`}
-        >
-          [ TERMINAL ]
-        </button>
-        <button 
-          onClick={() => setCurrentTab('agenda')}
-          className={`py-4 border-r border-borderGray tracking-widest transition-all ${currentTab === 'agenda' ? 'text-acidGreen bg-oledBlack border-t-2 border-t-acidGreen font-bold' : 'text-acidGreenDim hover:text-acidGreen'}`}
-        >
-          [ AGENDA ]
-        </button>
-        <button 
-          onClick={() => setCurrentTab('radio')}
-          className={`py-4 tracking-widest transition-all ${currentTab === 'radio' ? 'text-radioactiveOrange bg-oledBlack border-t-2 border-t-radioactiveOrange font-bold' : 'text-acidGreenDim hover:text-acidGreen'}`}
-        >
-          [ RÁDIO ]
-        </button>
-      </nav>
-    </div>
-  );
+    {/* Conteúdo Dinâmico - Flex cresce e gerencia rolagem própria se necessário */}
+    <main className="flex-1 overflow-y-auto p-3 flex flex-col justify-start">
+      {currentTab === 'terminal' && (
+        <Terminal 
+          userKey={userKey} 
+          onCall={handleStartCall} 
+        />
+      )}
+      {currentTab === 'agenda' && <Agenda />}
+      {currentTab === 'radio' && (
+        <Radio 
+          activeCall={activeCall} 
+          onDisconnect={handleDisconnect} 
+        />
+      )}
+    </main>
+
+    {/* Footer / Abas de Navegação - Sem encolher e travado na base */}
+    <nav className="border-t border-borderGray grid grid-cols-3 bg-terminalGray text-center text-xs shrink-0">
+      <button 
+        onClick={() => setCurrentTab('terminal')}
+        className={`py-4 border-r border-borderGray tracking-widest transition-all ${
+          currentTab === 'terminal' 
+            ? 'text-acidGreen bg-oledBlack border-t-2 border-t-acidGreen font-bold' 
+            : 'text-acidGreenDim hover:text-acidGreen'
+        }`}
+      >
+        [ TERMINAL ]
+      </button>
+      <button 
+        onClick={() => setCurrentTab('agenda')}
+        className={`py-4 border-r border-borderGray tracking-widest transition-all ${
+          currentTab === 'agenda' 
+            ? 'text-acidGreen bg-oledBlack border-t-2 border-t-acidGreen font-bold' 
+            : 'text-acidGreenDim hover:text-acidGreen'
+        }`}
+      >
+        [ AGENDA ]
+      </button>
+      <button 
+        onClick={() => setCurrentTab('radio')}
+        className={`py-4 tracking-widest transition-all ${
+          currentTab === 'radio' 
+            ? 'text-radioactiveOrange bg-oledBlack border-t-2 border-t-radioactiveOrange font-bold' 
+            : 'text-acidGreenDim hover:text-acidGreen'
+        }`}
+      >
+        [ RÁDIO ]
+      </button>
+    </nav>
+
+  </div>
+);
 }
