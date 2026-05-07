@@ -4,6 +4,7 @@ export default function useKChirp(userKey) {
   const [connectionState, setConnectionState] = useState('DISCONNECTED'); // DISCONNECTED, CONNECTING, CONNECTED, ERROR
   const [remoteStream, setRemoteStream] = useState(null);
   const [dataChannel, setDataChannel] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
 
   const peerConnection = useRef(null);
   const localStream = useRef(null);
@@ -121,6 +122,29 @@ export default function useKChirp(userKey) {
     };
   };
 
+  // Efeito de Escuta (Polling): Verifica se há chamadas para este dispositivo
+  useEffect(() => {
+    if (!userKey || connectionState === 'CONNECTED') return;
+
+    const pollSignaling = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/signal?userKey=${userKey}`);
+        const data = await res.json();
+
+        if (data.action === 'incoming' && !incomingCall) {
+          setIncomingCall({ from: data.sender, sdp: data.sdp });
+        } else if (data.action === 'connected' && connectionState === 'CONNECTING') {
+          // Recebemos a resposta do destino, finalizando o aperto de mão
+          await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        }
+      } catch (err) {
+        console.error("[K-CHIRP] Erro na sinalização:", err);
+      }
+    }, 3000); // Verifica a cada 3 segundos
+
+    return () => clearInterval(pollSignaling);
+  }, [userKey, connectionState, incomingCall]);
+
   // 4. Disparar Chamado (Gerar Oferta SDP)
   const makeCall = async (targetKey, onMessageReceived) => {
     try {
@@ -140,7 +164,19 @@ export default function useKChirp(userKey) {
       // Aguarda os candidatos ICE serem gerados antes de enviar para o outro par
       await waitForIceGathering();
 
-      return peerConnection.current.localDescription;
+      // ENVIA A OFERTA PARA A API DE SINALIZAÇÃO
+      await fetch('/api/signal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'call',
+          senderKey: userKey,
+          targetKey: targetKey,
+          sdp: peerConnection.current.localDescription
+        })
+      });
+
+      return true;
     } catch (err) {
       cleanup();
       throw err;
@@ -148,7 +184,8 @@ export default function useKChirp(userKey) {
   };
 
   // 5. Aceitar Chamado (Gerar Resposta SDP)
-  const answerCall = async (offer, onMessageReceived) => {
+  const answerCall = async (onMessageReceived) => {
+    if (!incomingCall) return;
     try {
       setConnectionState('CONNECTING');
       const stream = await startAudio();
@@ -159,7 +196,7 @@ export default function useKChirp(userKey) {
       });
 
       // Define a oferta do chamador
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(incomingCall.sdp));
 
       // Cria a nossa resposta criptografada
       const answer = await peerConnection.current.createAnswer();
@@ -168,7 +205,19 @@ export default function useKChirp(userKey) {
       // Aguarda os candidatos ICE
       await waitForIceGathering();
 
-      return peerConnection.current.localDescription;
+      // ENVIA A RESPOSTA PARA A API DE SINALIZAÇÃO
+      await fetch('/api/signal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'answer',
+          targetKey: userKey,
+          sdp: peerConnection.current.localDescription
+        })
+      });
+
+      setIncomingCall(null);
+      return true;
     } catch (err) {
       cleanup();
       throw err;
@@ -212,6 +261,7 @@ export default function useKChirp(userKey) {
   return {
     connectionState,
     remoteStream,
+    incomingCall,
     makeCall,
     answerCall,
     sendDataMessage,

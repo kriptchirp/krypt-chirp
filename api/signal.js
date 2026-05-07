@@ -31,8 +31,8 @@ export default async function handler(req, res) {
 
     // Ação 2: Responder Chamado (Quem está atendendo)
     if (action === 'answer') {
-      if (activeHandshakes[userKey]) {
-        activeHandshakes[userKey].answer = sdp;
+      if (activeHandshakes[targetKey]) {
+        activeHandshakes[targetKey].answer = sdp;
         return res.status(200).json({ success: true });
       }
       return res.status(404).json({ error: "Chamado expirado ou não encontrado." });
