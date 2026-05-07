@@ -29,7 +29,7 @@ setUserKey(savedKey);
 }, []);
 
 // Inicializa o nosso hook de P2P WebRTC conectando ao endereço local
-const { connectionState, makeCall, answerCall, disconnect } = useKChirp(userKey);
+const { connectionState, makeCall, answerCall, disconnect, incomingCall  } = useKChirp(userKey);
 
 // Monitora o estado da conexão para ajustar a navegação de forma reativa
 useEffect(() => {
@@ -40,6 +40,28 @@ setActiveCall(null);
 setCurrentTab('terminal');
 }
 }, [connectionState, currentTab]);
+
+// LOGICA DE RECEPÇÃO: Escuta sinais de chamada e valida contra a agenda local
+useEffect(() => {
+  if (incomingCall && connectionState === 'DISCONNECTED') {
+    // 1. Recuperar agenda local para verificação de segurança (P2P White-list)
+    const agendaSalva = localStorage.getItem('kchirp_local_contacts');
+    const contatos = agendaSalva ? JSON.parse(agendaSalva) : [];
+    
+    // 2. Verificar se a chave de origem (quem está ligando) está autorizada na agenda
+    const contatoAutorizado = contatos.find(c => c.key === incomingCall.from);
+
+    if (contatoAutorizado) {
+      console.log(`[P2P] Chamada autorizada detectada de: ${contatoAutorizado.name}`);
+      setActiveCall({ target: incomingCall.from, type: 'incoming' });
+      setCurrentTab('radio');
+      // 3. Responder ao sinal WebRTC (Envia o SDP Answer de volta)
+      answerCall();
+    } else {
+      console.warn(`[P2P] Chamada ignorada: Chave ${incomingCall.from} não consta na agenda local.`);
+    }
+  }
+}, [incomingCall, connectionState, answerCall]);
 
 const handleAcceptTerms = () => {
 localStorage.setItem('kchirp_terms_accepted', 'true');

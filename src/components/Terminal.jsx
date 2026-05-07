@@ -19,7 +19,7 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
 
   const handleSelectContact = (contactKey) => {
     playBeep(1000, 0.1);
-    setTargetKey(contactKey); 
+    if (contactKey) setTargetKey(contactKey);
   };
 
   const playBeep = (freq, duration) => {
