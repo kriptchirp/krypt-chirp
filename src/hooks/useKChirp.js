@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function useKChirp(userKey) {
-  const [connectionState, setConnectionState] = useState('DISCONNECTED'); // DISCONNECTED, CONNECTING, CONNECTED, ERROR
+  const [connectionState, setConnectionState] = useState('DISCONNECTED');
   const [remoteStream, setRemoteStream] = useState(null);
   const [dataChannel, setDataChannel] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
@@ -9,9 +9,8 @@ export default function useKChirp(userKey) {
   const peerConnection = useRef(null);
   const localStream = useRef(null);
   const dataChannelRef = useRef(null);
+  const pollingRef = useRef(null);
 
-  // Configuração padrão de servidores STUN públicos e gratuitos do Google
-  // Essencial para furar o NAT das operadoras de celular e conectar os IPs direto
   const rtcConfig = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -19,252 +18,166 @@ export default function useKChirp(userKey) {
     ]
   };
 
-  // 1. Inicializar Hardware de Áudio (Microfone)
-  const startAudio = async () => {
-    try {
-      if (!localStream.current) {
-        localStream.current = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true, // Reduz o eco no viva-voz do Android
-            noiseSuppression: true, // Limpa ruídos de fundo
-            autoGainControl: true   // Ajusta o ganho do microfone dinamicamente
-          },
-          video: false
-        });
-      }
-      return localStream.current;
-    } catch (err) {
-      console.error("[K-CHIRP] Erro ao acessar microfone:", err);
-      setConnectionState('ERROR');
-      throw err;
-    }
+  // --- FUNÇÃO CORE: GERAÇÃO DO ENDEREÇO DO TÚNEL P2P ---
+  // Cria um hash único que só quem tem as duas chaves consegue gerar.
+  const getTunnelId = async (keyA, keyB) => {
+    const combined = [keyA, keyB].sort().join('_'); // Ordem alfabética garante o mesmo ID em ambos os lados
+    const msgBuffer = new TextEncoder().encode(combined);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
   };
 
-  // 2. Parar Hardware de Áudio e Liberar Microfone
-  const stopAudio = () => {
-    if (localStream.current) {
-      localStream.current.getTracks().forEach(track => track.stop());
-      localStream.current = null;
-    }
-  };
+  // --- ESCUTA PASSIVA (O MONITOR DE TÚNEIS) ---
+  const monitorActiveTunnels = useCallback(async () => {
+    if (!userKey || connectionState !== 'DISCONNECTED') return;
 
-  // 3. Inicializar Conexão WebRTC (O Aperto de Mão P2P)
-  const initPeerConnection = async (onMessageReceived) => {
-    peerConnection.current = new RTCPeerConnection(rtcConfig);
-
-    // Log de candidatos para debug (opcional)
-    peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate) console.log("[K-CHIRP] Novo candidato ICE encontrado.");
-    };
-
-    // Evento de monitoramento de estado da conexão física
-    peerConnection.current.onconnectionstatechange = () => {
-      const state = peerConnection.current.connectionState.toUpperCase();
-      setConnectionState(state);
-      if (state === 'DISCONNECTED' || state === 'FAILED' || state === 'CLOSED') {
-        cleanup();
-      }
-    };
-
-    // Recebendo o fluxo de áudio do outro celular
-    peerConnection.current.ontrack = (event) => {
-      if (event.streams && event.streams[0]) {
-        setRemoteStream(event.streams[0]);
-        // Força a saída de áudio para o alto-falante externo (viva-voz) no Android
-        const audio = new Audio();
-        audio.srcObject = event.streams[0];
-        audio.play().catch(e => console.log("Erro ao reproduzir áudio recebido:", e));
-      }
-    };
-
-    // Criando o canal de dados para textos efêmeros (Rastro Zero)
-    // Usamos 'unordered' e 'maxRetransmits: 0' para simular protocolo UDP rápido
-    dataChannelRef.current = peerConnection.current.createDataChannel("kchirp_data", {
-      ordered: false,
-      maxRetransmits: 0
-    });
-
-    setupDataChannel(dataChannelRef.current, onMessageReceived);
-
-    // Ouvindo se o outro lado criar o canal de dados primeiro
-    peerConnection.current.ondatachannel = (event) => {
-      setupDataChannel(event.channel, onMessageReceived);
-    };
-  };
-
-  // Função auxiliar para aguardar a coleta de candidatos ICE
-  // Isso garante que o SDP (oferta/resposta) contenha as rotas de rede
-  const waitForIceGathering = async () => {
-    if (peerConnection.current.iceGatheringState === 'complete') return;
-
-    return new Promise((resolve) => {
-      const checkState = () => {
-        if (peerConnection.current.iceGatheringState === 'complete') {
-          peerConnection.current.removeEventListener('icegatheringstatechange', checkState);
-          resolve();
-        }
-      };
-      peerConnection.current.addEventListener('icegatheringstatechange', checkState);
-      // Timeout de segurança de 3 segundos
-      setTimeout(resolve, 3000);
-    });
-  };
-
-  // Configuração do Canal de Dados
-  const setupDataChannel = (channel, onMessageReceived) => {
-    channel.onopen = () => setDataChannel(channel);
-    channel.onclose = () => setDataChannel(null);
-    channel.onmessage = (event) => {
-      if (onMessageReceived) {
-        // Quando uma mensagem chega, ela é entregue para a UI
-        onMessageReceived(event.data);
-      }
-    };
-  };
-
-  // Efeito de Escuta (Polling): Verifica se há chamadas para este dispositivo
-  useEffect(() => {
-    if (!userKey || connectionState === 'CONNECTED') return;
-
-    const pollSignaling = setInterval(async () => {
+    const agenda = JSON.parse(localStorage.getItem('kchirp_local_contacts') || '[]');
+    
+    // Varre cada contato da agenda procurando um sinal no túnel correspondente
+    for (const contact of agenda) {
       try {
-        const res = await fetch(`/api/signal?userKey=${userKey}`);
+        const tunnelId = await getTunnelId(userKey, contact.key);
+        const res = await fetch(`/api/signal?userKey=${tunnelId}`);
         const data = await res.json();
 
-        if (data.action === 'incoming' && !incomingCall) {
-          setIncomingCall({ from: data.sender, sdp: data.sdp });
-        } else if (data.action === 'connected' && connectionState === 'CONNECTING') {
-          // Recebemos a resposta do destino, finalizando o aperto de mão
-          await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        // Se houver um 'call' vindo especificamente desse contato no túnel secreto
+        if (data.sdp && data.action === 'call' && data.senderKey === contact.key) {
+          setIncomingCall({
+            senderKey: contact.key,
+            senderName: contact.name,
+            sdp: data.sdp,
+            tunnelId: tunnelId
+          });
+          break; // Para na primeira chamada encontrada
         }
       } catch (err) {
-        console.error("[K-CHIRP] Erro na sinalização:", err);
+        // Silencioso: Túnel vazio ou offline
       }
-    }, 3000); // Verifica a cada 3 segundos
+    }
+  }, [userKey, connectionState]);
 
-    return () => clearInterval(pollSignaling);
-  }, [userKey, connectionState, incomingCall]);
+  useEffect(() => {
+    if (userKey && connectionState === 'DISCONNECTED') {
+      pollingRef.current = setInterval(monitorActiveTunnels, 3500);
+    }
+    return () => clearInterval(pollingRef.current);
+  }, [userKey, connectionState, monitorActiveTunnels]);
 
-  // 4. Disparar Chamado (Gerar Oferta SDP)
-  const makeCall = async (targetKey, onMessageReceived) => {
+  // --- LÓGICA DE CONEXÃO (HANDSHAKE) ---
+
+  const createPeerConnection = (targetKey) => {
+    const pc = new RTCPeerConnection(rtcConfig);
+    pc.ontrack = (e) => setRemoteStream(e.streams[0]);
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'connected') setConnectionState('CONNECTED');
+      if (pc.iceConnectionState === 'disconnected') cleanup();
+    };
+    peerConnection.current = pc;
+    return pc;
+  };
+
+  // DISCAR (Enviar sinal para o Túnel)
+  const startCall = async (targetKey) => {
     try {
       setConnectionState('CONNECTING');
-      const stream = await startAudio();
-      await initPeerConnection(onMessageReceived);
+      const tunnelId = await getTunnelId(userKey, targetKey);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStream.current = stream;
 
-      // Adiciona nossa faixa de áudio para transmissão
-      stream.getTracks().forEach(track => {
-        peerConnection.current.addTrack(track, stream);
-      });
+      const pc = createPeerConnection(targetKey);
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-      // Cria a oferta criptografada de conexão
-      const offer = await peerConnection.current.createOffer();
-      await peerConnection.current.setLocalDescription(offer);
+      const dc = pc.createDataChannel("kchirp-chat");
+      setupDataChannel(dc);
 
-      // Aguarda os candidatos ICE serem gerados antes de enviar para o outro par
-      await waitForIceGathering();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
 
-      // ENVIA A OFERTA PARA A API DE SINALIZAÇÃO
+      // Publica a oferta no endereço do túnel
       await fetch('/api/signal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'call',
           senderKey: userKey,
-          targetKey: targetKey,
-          sdp: peerConnection.current.localDescription
+          targetKey: tunnelId, // O alvo é o endereço matemático do túnel
+          sdp: pc.localDescription
         })
       });
 
-      return true;
+      // Polling de resposta no túnel
+      const answerWait = setInterval(async () => {
+        const res = await fetch(`/api/signal?userKey=${tunnelId}`);
+        const data = await res.json();
+        if (data.action === 'connected' && data.sdp) {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          clearInterval(answerWait);
+        }
+      }, 2000);
+
     } catch (err) {
       cleanup();
-      throw err;
+      console.error("Falha ao iniciar rádio:", err);
     }
   };
 
-  // 5. Aceitar Chamado (Gerar Resposta SDP)
-  const answerCall = async (onMessageReceived) => {
+  // ATENDER (Responder no Túnel)
+  const acceptCall = async () => {
     if (!incomingCall) return;
     try {
       setConnectionState('CONNECTING');
-      const stream = await startAudio();
-      await initPeerConnection(onMessageReceived);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStream.current = stream;
 
-      stream.getTracks().forEach(track => {
-        peerConnection.current.addTrack(track, stream);
-      });
+      const pc = createPeerConnection(incomingCall.senderKey);
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      pc.ondatachannel = (e) => setupDataChannel(e.channel);
 
-      // Define a oferta do chamador
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(incomingCall.sdp));
+      await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
 
-      // Cria a nossa resposta criptografada
-      const answer = await peerConnection.current.createAnswer();
-      await peerConnection.current.setLocalDescription(answer);
-
-      // Aguarda os candidatos ICE
-      await waitForIceGathering();
-
-      // ENVIA A RESPOSTA PARA A API DE SINALIZAÇÃO
+      // Envia resposta para o túnel
       await fetch('/api/signal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'answer',
-          targetKey: userKey,
-          sdp: peerConnection.current.localDescription
+          targetKey: incomingCall.tunnelId,
+          sdp: pc.localDescription
         })
       });
 
       setIncomingCall(null);
-      return true;
     } catch (err) {
       cleanup();
-      throw err;
     }
   };
 
-  // 6. Enviar Mensagem de Texto Efêmera via P2P
-  const sendDataMessage = (text) => {
-    if (dataChannel && dataChannel.readyState === 'open') {
-      dataChannel.send(text);
-      return true;
-    }
-    return false;
+  const setupDataChannel = (dc) => {
+    dc.onmessage = (e) => setDataChannel(e.data);
+    dc.onopen = () => setDataChannel(dc);
+    dataChannelRef.current = dc;
   };
 
-  // 7. Desconectar e Limpar a RAM (Rastro Zero Absoluto)
   const cleanup = () => {
-    stopAudio();
-
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close();
-      dataChannelRef.current = null;
-    }
-
-    if (peerConnection.current) {
-      peerConnection.current.close();
-      peerConnection.current = null;
-    }
-
+    if (peerConnection.current) peerConnection.current.close();
+    if (localStream.current) localStream.current.getTracks().forEach(t => t.stop());
+    setConnectionState('DISCONNECTED');
     setRemoteStream(null);
     setDataChannel(null);
-    setConnectionState('DISCONNECTED');
-    console.log("[K-CHIRP] Memória limpa e conexões encerradas.");
+    setIncomingCall(null);
   };
-
-  // Limpa tudo de forma proativa se o hook for desmontado da tela
-  useEffect(() => {
-    return () => cleanup();
-  }, []);
 
   return {
     connectionState,
     remoteStream,
     incomingCall,
-    makeCall,
-    answerCall,
-    sendDataMessage,
-    disconnect: cleanup
+    startCall,
+    acceptCall,
+    rejectCall: () => setIncomingCall(null),
+    cleanup
   };
 }
