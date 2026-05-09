@@ -56,13 +56,16 @@ export default function Terminal({ userKey, onCall, targetKey, setTargetKey }) {
   };
 
   const handleCallSubmit = () => {
-    if (targetKey.trim().length > 3) {
-      playBeep(1200, 0.15);
-      onCall(targetKey.toUpperCase());
-    } else {
-      playBeep(220, 0.3);
-    }
-  };
+  if (targetKey && userKey) { // Precisamos de ambas aqui
+    playBeep(880, 0.1);
+    
+    // Se o seu getTunnelId usa a ordem (Dono da Agenda, Chave do Amigo)
+    // No terminal, você é o 'dono' (userKey) e o amigo é o 'targetKey'
+    console.log(`[K-CHIRP] Criando túnel entre ${userKey} e ${targetKey}`);
+    
+    onCall(targetKey); // O App.jsx vai receber isso e o useKChirp fará o resto
+  }
+};
 
   const copiarChaveParaClipboard = () => {
     navigator.clipboard.writeText(userKey);
